@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Roadmap interativo para aprender e praticar Rolling Update no Kubernetes.">
+  <title>Astro K8S — Roadmap de Rolling Update</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=MuseoModerno:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="wrap" id="wrap">
+    <header class="hero">
+      <div class="hero-copy">
+        <div class="brand-lockup">
+          <img class="astro-logo" src="assets/astro-logo.svg" alt="Astro">
+          <span>Rolling Update lab</span>
+        </div>
+        <div class="eyebrow">
+          <span class="status-light" aria-hidden="true"></span>
+          Trilha guiada · Kubernetes / DevOps
+        </div>
+        <h1 class="title">Rolling Update <span>em órbita</span></h1>
+        <p class="subtitle">Aprenda a atualizar aplicações no Kubernetes com baixo downtime — da imagem Docker ao diagnóstico e rollback.</p>
+        <p class="hint"><kbd>siga as etapas 01 a 11</kbd> e marque cada tópico depois de estudar ou praticar</p>
+        <div class="hero-actions">
+          <button class="presentation-launch" id="startPresentationBtn" type="button">
+            <span aria-hidden="true">▶</span>
+            Iniciar apresentação
+          </button>
+          <a class="roadmap-link" href="#roadmap">Explorar roadmap</a>
+          <a class="lab-link" id="labAccessLink" href="#labLock">Laboratório bloqueado</a>
+        </div>
+      </div>
+
+      <aside class="progress-card" aria-label="Progresso na trilha">
+        <div class="progress-heading">
+          <span>Seu progresso</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-bar-outer" aria-hidden="true">
+          <div class="progress-bar-inner" id="progressBar"></div>
+        </div>
+        <div class="progress-label" id="progressLabel" aria-live="polite">Preparando rota...</div>
+        <button class="beginner-btn" id="resetBtn" type="button">Reiniciar progresso</button>
+      </aside>
+    </header>
+
+    <div class="top-row">
+      <section class="start-card" aria-labelledby="startTitle">
+        <h2 class="card-kicker" id="startTitle">Antes de decolar</h2>
+        <p>Prepare um ambiente seguro para praticar:</p>
+        <ul>
+          <li>Docker e leitura básica de YAML</li>
+          <li><code>kubectl</code> configurado</li>
+          <li>cluster local com kind ou minikube</li>
+        </ul>
+      </section>
+    </div>
+
+    <main class="map-shell" id="roadmap">
+      <div class="map-heading">
+        <div>
+          <span class="map-kicker">4 fases · 11 etapas · uma rota contínua</span>
+          <h2>Roadmap de Rolling Update</h2>
+        </div>
+        <p>Avance por fases: conceitos relacionados ficam juntos e cada etapa prepara o caminho para a próxima. Abra um tópico para estudar e marque o que concluir.</p>
+      </div>
+      <div id="tree"></div>
+    </main>
+
+    <section class="lab-lock" id="labLock" aria-labelledby="labLockTitle">
+      <div>
+        <span class="map-kicker">Laboratório · aguardando a conclusão da trilha</span>
+        <h2 id="labLockTitle">Primeiro os conceitos. Depois, a simulação.</h2>
+        <p>Apresente e marque todos os subtópicos como concluídos para liberar o laboratório Kubernetes.</p>
+        <p class="lab-lock-status" id="labLockStatus" role="status">Conclua a trilha para desbloquear.</p>
+      </div>
+      <a class="lab-lock-link" id="labLockLink" href="#roadmap">Voltar ao roadmap ↑</a>
+    </section>
+
+    <section class="kube-lab" id="kubernetes-lab" aria-labelledby="labTitle" hidden inert>
+      <header class="lab-header">
+        <div class="lab-heading">
+          <span class="map-kicker">Laboratório interativo · simulação local</span>
+          <h2 id="labTitle">Veja o Rolling Update acontecer</h2>
+          <p>Edite os manifestos, acompanhe os Pods e relacione cada mudança aos comandos que seriam executados em um cluster real.</p>
+        </div>
+        <div class="lab-header-actions">
+          <div class="lab-state" aria-live="polite">
+            <span class="lab-state-dot" id="labStateDot" aria-hidden="true"></span>
+            <span>
+              <small>Estado do laboratório</small>
+              <strong id="labStateLabel">Aguardando validação</strong>
+            </span>
+          </div>
+          <button class="lab-present" id="labPresentBtn" type="button">Apresentar laboratório</button>
+          <button class="lab-reset" id="labResetBtn" type="button">Reiniciar laboratório</button>
+          <button class="lab-presentation-exit" id="labPresentationExit" type="button" aria-label="Sair da apresentação do laboratório" hidden>✕</button>
+        </div>
+      </header>
+
+      <div class="lab-actionbar" aria-label="Etapas da demonstração">
+        <button type="button" id="labValidateBtn" data-lab-action="validate"><span>01</span>Validar YAML</button>
+        <button type="button" id="labApplyBtn" data-lab-action="apply" disabled><span>02</span>Aplicar versão v1</button>
+        <button type="button" id="labUpdateBtn" data-lab-action="update" disabled><span>03</span>Atualizar para v2</button>
+        <button type="button" id="labFailBtn" data-lab-action="fail" disabled><span>04</span>Simular falha</button>
+        <button type="button" id="labRollbackBtn" data-lab-action="rollback" disabled><span>05</span>Executar rollback</button>
+        <label class="lab-speed">
+          <span>Velocidade</span>
+          <select id="labSpeed" aria-label="Velocidade da simulação">
+            <option value="2">0,5×</option>
+            <option value="1" selected>1×</option>
+            <option value="0.5">2×</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="lab-guide">
+        <p><span class="lab-guide-dot" aria-hidden="true"></span><strong id="labStepLabel">Etapa 1 de 5</strong><span id="labStepHint">Comece por Validar YAML. As próximas ações são liberadas em sequência.</span></p>
+        <span class="lab-simulation-label">Ambiente simulado · sem acesso ao cluster</span>
+      </div>
+
+      <div class="lab-workspace">
+        <section class="lab-editor" aria-labelledby="labEditorTitle">
+          <header class="lab-module-head">
+            <div>
+              <span>O que você declara</span>
+              <h3 id="labEditorTitle">Configuração declarativa</h3>
+            </div>
+          </header>
+          <div class="lab-file-tabs" role="tablist" aria-label="Arquivos Kubernetes">
+            <button type="button" role="tab" aria-selected="true" data-lab-file="deployment-v1">Deployment v1</button>
+            <button type="button" role="tab" aria-selected="false" data-lab-file="deployment-v2">Deployment v2</button>
+            <button type="button" role="tab" aria-selected="false" data-lab-file="service">Service</button>
+            <button type="button" role="tab" aria-selected="false" data-lab-file="broken-deployment">Versão com erro</button>
+          </div>
+          <p class="lab-file-description" id="labFileDescription">Define 3 réplicas da v1 e a estratégia de atualização.</p>
+          <div class="lab-editor-tools">
+            <span id="labEditorStatus">Pronto para editar</span>
+            <div>
+              <button type="button" id="labCopyYaml">Copiar YAML</button>
+              <button type="button" id="labDownloadYaml">Baixar arquivo</button>
+            </div>
+          </div>
+          <div class="lab-code-header"><code id="labFileName">deployment-v1.yaml</code><span>YAML · editável</span></div>
+          <div class="lab-code-editor">
+            <pre class="lab-line-numbers" id="labLineNumbers" aria-hidden="true"></pre>
+            <textarea id="labYamlEditor" aria-label="Editor do manifesto Kubernetes" spellcheck="false" wrap="off"></textarea>
+          </div>
+          <p class="lab-editor-note">Roteiro fixo: 3 réplicas, até 1 Pod extra e 0 indisponíveis durante a troca. Editar o YAML não reconfigura a animação.</p>
+        </section>
+
+        <section class="lab-cluster" aria-labelledby="labClusterTitle">
+          <header class="lab-module-head">
+            <div>
+              <span>O que o Kubernetes mantém</span>
+              <h3 id="labClusterTitle">Cluster em movimento</h3>
+            </div>
+            <span class="lab-availability" id="labAvailability">0/3 disponíveis</span>
+          </header>
+          <dl class="lab-cluster-metrics" aria-label="Réplicas no cenário simulado">
+            <div><dt>Desejadas</dt><dd>3</dd></div>
+            <div><dt>Ready agora</dt><dd id="labReadyCount">0</dd></div>
+            <div><dt>Pods / limite*</dt><dd><span id="labPodCount">0</span><small> / 4</small></dd></div>
+          </dl>
+          <div class="cluster-canvas">
+            <div class="cluster-control-plane">
+              <span>Deployment</span>
+              <strong>astro-demo</strong>
+              <small id="labDeploymentRevision">sem revisão</small>
+            </div>
+            <div class="cluster-route" aria-hidden="true"></div>
+            <div class="replicaset-lane" aria-label="ReplicaSets">
+              <div class="replicaset-node" id="labRsOld">
+                <span>ReplicaSet estável</span>
+                <strong id="labRsOldName">—</strong>
+                <small id="labRsOldCount">0 réplicas</small>
+              </div>
+              <div class="replicaset-node is-next" id="labRsNew">
+                <span>ReplicaSet candidato</span>
+                <strong id="labRsNewName">—</strong>
+                <small id="labRsNewCount">0 réplicas</small>
+              </div>
+            </div>
+            <div class="lab-pods-heading"><span>Pods do Deployment</span><span>3 desejados + 1 extra</span></div>
+            <div class="pod-field" id="labPods" aria-label="Pods do Deployment"></div>
+            <div class="lab-rollout">
+              <div><label for="labRolloutProgress" id="labRolloutLabel">Réplicas prontas</label><span id="labRolloutCount">0 de 3</span></div>
+              <progress id="labRolloutProgress" value="0" max="3">0 de 3</progress>
+              <p id="labClusterHint">Valide o YAML e aplique a v1 para criar os primeiros Pods.</p>
+            </div>
+            <div class="service-rail">
+              <div>
+                <span>Service</span>
+                <strong>astro-demo</strong>
+              </div>
+              <small id="labServiceStatus">Nenhum endpoint Ready</small>
+            </div>
+          </div>
+          <p class="lab-cluster-note">*Limite do roteiro. Em um cluster real, Pods em término podem elevar o total temporariamente.</p>
+        </section>
+
+        <section class="lab-operations" aria-labelledby="labTerminalTitle">
+          <div class="lab-context">
+            <span>O que está acontecendo</span>
+            <h3 id="labContextTitle">Valide antes de aplicar</h3>
+            <p id="labContextText">Comece verificando a estrutura do manifesto antes de enviá-lo ao cluster.</p>
+            <ul id="labContextPoints">
+              <li>Nenhum recurso foi criado.</li>
+              <li>O navegador executa uma simulação controlada.</li>
+            </ul>
+          </div>
+          <div class="lab-terminal">
+            <header>
+              <div>
+                <span aria-hidden="true"></span>
+                <h3 id="labTerminalTitle">Terminal do laboratório</h3>
+              </div>
+              <button type="button" id="labClearTerminal">Limpar terminal</button>
+            </header>
+            <div class="terminal-output" id="labTerminal" role="log" aria-live="polite" aria-relevant="additions"></div>
+          </div>
+        </section>
+      </div>
+      <p class="lab-disclaimer"><strong>Simulação educativa:</strong> fluxo simplificado, validação local de campos e tempos acelerados. Nenhum cluster é acessado pelo navegador. Para executar de verdade, use os manifestos da pasta <code>kubernetes/</code>.</p>
+    </section>
+
+    <footer>
+      Astro K8S · conteúdo estruturado a partir da pesquisa do Grupo 2 e da
+      <a href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/" target="_blank" rel="noopener">documentação oficial do Kubernetes</a>.
+    </footer>
+  </div>
+
+  <div class="lab-backdrop" id="labBackdrop" hidden></div>
+
+  <nav class="presentation-toolbar" id="presentationToolbar" aria-label="Controles da apresentação" hidden>
+    <button class="presentation-exit" id="presentationExitBtn" type="button" aria-label="Sair do modo apresentação">✕</button>
+    <div class="presentation-status" aria-live="polite">
+      <span id="presentationStep">Etapa 01 de 11</span>
+      <strong id="presentationTitle">Entenda o problema</strong>
+    </div>
+    <div class="presentation-controls">
+      <button id="presentationPrevBtn" type="button" aria-label="Etapa anterior">←</button>
+      <button id="presentationNextBtn" type="button" aria-label="Próxima etapa">→</button>
+    </div>
+  </nav>
+
+  <div class="overlay" id="overlay"></div>
+  <section class="stage-spotlight" id="stageSpotlight" aria-label="Etapa em foco" aria-hidden="true" hidden>
+    <div class="spotlight-stage" id="spotlightStage"></div>
+  </section>
+  <aside class="panel" id="panel" role="dialog" aria-modal="true" aria-labelledby="panelTitle" aria-hidden="true">
+    <div class="panel-header">
+      <div>
+        <h2 id="panelTitle">Título</h2>
+        <span class="badge-pill" id="panelBadge" style="display:none;"></span>
+      </div>
+      <button class="panel-close" id="panelClose" type="button" aria-label="Fechar detalhes">✕</button>
+    </div>
+    <div class="panel-body">
+      <p class="desc" id="panelDesc"></p>
+      <div class="complete-topic" id="completeTopic" hidden>
+        <button id="completeTopicBtn" type="button" aria-describedby="completeTopicStatus">Concluir tópico</button>
+        <p id="completeTopicStatus" role="status" aria-live="polite"></p>
+      </div>
+      <section class="panel-learning" id="panelLearning" aria-labelledby="panelLearningTitle" hidden>
+        <h3 id="panelLearningTitle">O que destacar</h3>
+        <ul class="panel-points" id="panelPoints"></ul>
+      </section>
+      <aside class="presenter-note" id="presenterNote" hidden>
+        <span>Durante a apresentação</span>
+        <p id="presenterNoteText"></p>
+      </aside>
+      <section class="code-card" id="panelCodeSection" aria-labelledby="panelCodeTitle" hidden>
+        <div class="code-card-head">
+          <div>
+            <span id="panelCodeLanguage">Exemplo</span>
+            <strong id="panelCodeTitle">Código de apoio</strong>
+          </div>
+          <button class="copy-code" id="copyCodeBtn" type="button">Copiar</button>
+        </div>
+        <pre><code id="panelCode"></code></pre>
+      </section>
+      <label class="mark-done-row" id="markDoneRow">
+        <input type="checkbox" id="markDoneCheck">
+        <span>Marcar como concluído</span>
+      </label>
+      <h3>Recursos para estudar</h3>
+      <ul class="resource-list" id="panelLinks"></ul>
+    </div>
+  </aside>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

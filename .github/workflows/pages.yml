@@ -1,0 +1,44 @@
+name: Publicar GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obter projeto
+        uses: actions/checkout@v6
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+      - name: Validar JavaScript
+        run: node --check app.js
+      - name: Preparar somente os arquivos públicos
+        run: node scripts/build-pages.cjs
+      - name: Enviar site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar
+        id: deployment
+        uses: actions/deploy-pages@v4

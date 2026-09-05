@@ -1,0 +1,25 @@
+# Generated captures, recordings and local-only tools
+/tmp/
+/tests/
+*.webm
+*.mp4
+*.mov
+*.zip
+
+# Generated Pages output (the workflow rebuilds it)
+/_site/
+/node_modules/
+*.log
+
+# Local settings and credentials must not be published
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.DS_Store
+Thumbs.db
+/.vscode/
+/.idea/
+/.codex/
+
