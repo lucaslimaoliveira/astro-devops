@@ -1,58 +1,32 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: astro-demo
-  labels:
-    app: astro-demo
-  annotations:
-    kubernetes.io/change-cause: "Release v1 — nginx 1.25"
+  name: astro-demo # Mesmo Deployment nas versoes v1 e v2
 spec:
   replicas: 3
-  revisionHistoryLimit: 5
-  minReadySeconds: 5
-  progressDeadlineSeconds: 180
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
-  selector:
+      maxSurge: 1 # Permite 1 replica extra durante a troca
+      maxUnavailable: 0 # A troca deve preservar 3 replicas disponiveis
+  selector: # Obrigatorio: deve corresponder aos labels dos Pods
     matchLabels:
       app: astro-demo
-  template:
+  template: # Alterar este template inicia uma nova revisao
     metadata:
       labels:
         app: astro-demo
         version: v1
     spec:
-      terminationGracePeriodSeconds: 30
       containers:
-        - name: web
-          image: nginx:1.25-alpine
-          imagePullPolicy: IfNotPresent
+        - name: web # Identifica o container; mantenha o nome na v2
+          image: nginx:1.25-alpine # Na v2, muda para nginx:1.27-alpine
           ports:
             - name: http
               containerPort: 80
-          readinessProbe:
+          readinessProbe: # Verifica se o novo Pod pode receber trafego
             httpGet:
               path: /
               port: http
             initialDelaySeconds: 2
             periodSeconds: 3
-            timeoutSeconds: 2
-            failureThreshold: 3
-          livenessProbe:
-            httpGet:
-              path: /
-              port: http
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            timeoutSeconds: 2
-            failureThreshold: 3
-          resources:
-            requests:
-              cpu: 20m
-              memory: 24Mi
-            limits:
-              cpu: 100m
-              memory: 64Mi
