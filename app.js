@@ -8,162 +8,162 @@ const DATA = [
     id: "fundamentos",
     title: "Entenda o problema",
     track: "Fundamentos",
-    desc: "Objetivo: reconhecer por que uma troca abrupta de versão gera indisponibilidade. Checkpoint: explicar como o Rolling Update reduz downtime sem prometer zero downtime sozinho.",
+    desc: "Imagine o astro-demo atendendo usuários com 3 réplicas da v1. Precisamos publicar a v2 sem interromper esse atendimento. Vamos partir do problema da indisponibilidade, entender a troca gradual e descobrir quais componentes do Kubernetes tornam isso possível.",
     links: [
       { label: "Kubernetes — atualização sem downtime", url: "https://kubernetes.io/docs/tasks/run-application/update-deployment-rolling/" }
     ],
     items: [
-      { id: "downtime", name: "Downtime planejado e não planejado", badge: "purple", desc: "Downtime é o período em que a aplicação não consegue atender corretamente. Pode acontecer em uma manutenção planejada ou por falhas de software, rede, recursos, dependências e segurança.", links: [] },
-      { id: "troca-abrupta", name: "Risco da troca abrupta", badge: "purple", desc: "Se todas as instâncias antigas forem encerradas antes de as novas ficarem prontas, o Service fica temporariamente sem backends capazes de responder.", links: [] },
-      { id: "conceito-rolling", name: "O que o Rolling Update resolve", badge: "purple", desc: "O Rolling Update substitui Pods gradualmente para manter capacidade durante a mudança. Ele reduz o risco de indisponibilidade, mas depende de réplicas, probes, recursos e compatibilidade.", links: [{ label: "Kubernetes — Deployments", url: "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/" }] },
-      { id: "limites-rolling", name: "O que ele não garante sozinho", badge: "gray", desc: "Readiness mal configurada, falta de capacidade, encerramento incorreto ou incompatibilidade entre versões ainda podem causar falhas mesmo com RollingUpdate.", links: [] }
+      { id: "downtime", name: "Downtime planejado e não planejado", badge: "purple", desc: "Antes de atualizar a aplicação, precisamos definir o que queremos evitar: downtime é o intervalo em que o usuário não consegue usar o serviço corretamente. Uma manutenção pode ser planejada; uma falha pode ser inesperada. Em ambos os casos, o que importa é o impacto nas requisições, não apenas se há contêineres em execução.", links: [] },
+      { id: "troca-abrupta", name: "Risco da troca abrupta", badge: "purple", desc: "No cenário anterior, imagine desligar as 3 réplicas da v1 de uma vez. Enquanto a v2 baixa a imagem, inicia e fica pronta, não há instâncias disponíveis para atender. Esse intervalo explica por que a ordem da substituição importa: preparar a nova capacidade antes de retirar a antiga reduz o risco.", links: [] },
+      { id: "conceito-rolling", name: "O que o Rolling Update resolve", badge: "purple", desc: "Para evitar a troca abrupta, o Rolling Update substitui os Pods em etapas. No nosso exemplo, uma nova réplica é preparada enquanto as antigas continuam atendendo. A substituição avança conforme a disponibilidade e os limites configurados; mais adiante veremos como maxSurge, maxUnavailable e readiness trabalham juntos.", links: [{ label: "Kubernetes — Deployments", url: "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/" }] },
+      { id: "limites-rolling", name: "O que ele não garante sozinho", badge: "gray", desc: "A troca gradual resolve a coordenação da substituição, não todos os problemas da aplicação. Uma v2 com bug pode ficar Ready e ainda falhar para o usuário. Por isso, além da estratégia, precisamos entender quem cria os Pods, como o tráfego chega até eles e quais verificações tornam a atualização confiável.", links: [] }
     ]
   },
   {
     id: "arquitetura",
     title: "Mapeie a arquitetura",
     track: "Kubernetes",
-    desc: "Objetivo: visualizar quem declara, cria, executa e publica a aplicação. Checkpoint: desenhar o caminho Deployment → ReplicaSets → Pods Ready → Service.",
+    desc: "Agora que sabemos por que preservar o atendimento, vamos acompanhar quem faz cada parte da troca: o Deployment declara a versão desejada, os ReplicaSets mantêm os Pods e o Service oferece um endereço estável para alcançá-los. Essa estrutura será a mesma do laboratório.",
     links: [
       { label: "Kubernetes — Deployments", url: "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/" },
       { label: "Kubernetes — Services", url: "https://kubernetes.io/docs/concepts/services-networking/service/" }
     ],
     items: [
-      { id: "deployment", name: "Deployment: estado desejado", badge: "purple", desc: "Declara imagem, quantidade de réplicas, Pod template e estratégia de atualização. Uma mudança em spec.template cria uma nova revisão.", links: [{ label: "Deployment na documentação", url: "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/" }] },
-      { id: "replicaset", name: "ReplicaSet: versões coexistindo", badge: "purple", desc: "O ReplicaSet mantém os Pods de um template. Durante o rollout, o ReplicaSet antigo e o novo coexistem enquanto um diminui e o outro cresce.", links: [] },
-      { id: "pods-ready", name: "Pods e condição Ready", badge: "purple", desc: "O Pod executa o contêiner. Processo iniciado não significa aplicação pronta: a condição Ready informa se ele pode participar do tráfego regular.", links: [{ label: "Kubernetes — ciclo de vida do Pod", url: "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/" }] },
+      { id: "deployment", name: "Deployment: estado desejado", badge: "purple", desc: "O ponto de partida é o Deployment astro-demo: nele declaramos 3 réplicas e o modelo dos Pods em spec.template. O controlador procura fazer o cluster chegar a esse estado. Alterar a imagem no template inicia um rollout; mudar apenas replicas ajusta a escala, sem criar uma revisão do template.", links: [{ label: "Deployment na documentação", url: "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/" }] },
+      { id: "replicaset", name: "ReplicaSet: versões coexistindo", badge: "purple", desc: "O Deployment não substitui todos os Pods diretamente: ele coordena ReplicaSets, cada um associado a um template. Na passagem de v1 para v2, o novo ReplicaSet cresce e o antigo diminui. Essa coexistência materializa a troca gradual apresentada antes.", links: [] },
+      { id: "pods-ready", name: "Pods e condição Ready", badge: "purple", desc: "Os Pods mantidos pelos ReplicaSets executam o contêiner web. Mas existir não basta: eles precisam estar prontos para atender. O Service astro-demo seleciona os Pods pelo label app: astro-demo, comum às duas versões, e normalmente encaminha tráfego aos endpoints Ready. Agora falta definir qual imagem esses Pods executarão.", links: [{ label: "Kubernetes — ciclo de vida do Pod", url: "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/" }] },
     ]
   },
   {
     id: "artefato",
     title: "Produza o artefato",
     track: "Docker",
-    desc: "Objetivo: levar uma mudança do código até uma imagem rastreável no registry. Checkpoint: relacionar commit, build, tag, digest e ambiente sem reconstruir o artefato.",
+    desc: "Conhecida a arquitetura, precisamos identificar exatamente o que será entregue. Em uma aplicação própria, o código vira uma imagem construída, testada e publicada em um registry. Neste projeto usamos imagens prontas do NGINX: nginx:1.25-alpine representa a v1 e nginx:1.27-alpine representa a v2.",
     links: [
       { label: "Docker — boas práticas de build", url: "https://docs.docker.com/build/building-best-practices/" },
       { label: "Kubernetes — imagens", url: "https://kubernetes.io/docs/concepts/containers/images/" }
     ],
     items: [
-      { id: "tag-digest", name: "Tag única e digest", badge: "purple", desc: "Evite latest. Use uma tag única por build e registre o digest quando precisar garantir exatamente o mesmo conteúdo em todos os ambientes.", links: [{ label: "Docker — tags imutáveis", url: "https://docs.docker.com/docker-hub/repos/manage/hub-images/immutable-tags/" }] },
-      { id: "pod-template", name: "Atualize o Pod template", badge: "purple", desc: "Mude a referência da imagem em spec.template. Apenas publicar bytes diferentes com a mesma tag não altera o template e prejudica a rastreabilidade.", links: [] }
+      { id: "tag-digest", name: "Tag única e digest", badge: "purple", desc: "Para relacionar uma mudança de código ao que o Pod executa, a imagem precisa ser rastreável. Uma tag é um nome legível; um digest identifica o conteúdo. No laboratório, as tags do NGINX facilitam a comparação visual, mas não substituem o uso de digest quando é necessário fixar o artefato exato.", links: [{ label: "Docker — tags imutáveis", url: "https://docs.docker.com/docker-hub/repos/manage/hub-images/immutable-tags/" }] },
+      { id: "pod-template", name: "Atualize o Pod template", badge: "purple", desc: "Com a imagem escolhida, o próximo passo é mudar sua referência em spec.template.spec.containers. Nos manifestos do projeto, mantemos o Deployment astro-demo e o contêiner web, trocando a imagem da v1 para a v2. Isso conecta o artefato ao novo ReplicaSet; antes de aplicar, vamos definir os limites da substituição.", links: [] }
     ]
   },
   {
     id: "estrategia",
     title: "Configure o rollout",
     track: "RollingUpdate",
-    desc: "Objetivo: controlar disponibilidade e capacidade durante a troca. Checkpoint: calcular o mínimo disponível e o máximo total para um cenário de réplicas.",
+    desc: "Já sabemos o que muda no template. Agora precisamos definir como essa mudança avança sem retirar capacidade cedo demais. Vamos manter um único cenário: 3 réplicas desejadas, maxUnavailable: 0 e maxSurge: 1. Esses números serão usados novamente na execução e no laboratório.",
     links: [
       { label: "Kubernetes — estratégia RollingUpdate", url: "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment" }
     ],
     items: [
-      { id: "replicas", name: "Defina réplicas e capacidade", badge: "purple", desc: "Use pelo menos duas réplicas quando precisar tolerar a substituição de uma instância. Confirme CPU, memória, volumes e quotas para acomodar Pods extras.", links: [{ label: "Kubernetes — recursos de contêiner", url: "https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/" }] },
-      { id: "max-unavailable", name: "maxUnavailable", badge: "purple", desc: "Define quantos Pods desejados podem ficar indisponíveis durante a atualização. Percentuais são arredondados para baixo.", links: [] },
-      { id: "max-surge", name: "maxSurge", badge: "purple", desc: "Define quantos Pods extras podem existir acima do número desejado. Percentuais são arredondados para cima e exigem capacidade no cluster.", links: [] },
-      { id: "tempo-rollout", name: "minReadySeconds e deadline", badge: "gray", desc: "minReadySeconds exige estabilidade antes de considerar o Pod disponível. progressDeadlineSeconds sinaliza falta de progresso dentro do prazo.", links: [] }
+      { id: "replicas", name: "Defina réplicas e capacidade", badge: "purple", desc: "As 3 réplicas representam a capacidade normal do astro-demo. Para criar uma nova antes de remover uma antiga, o cluster precisa de espaço adicional. Confira os requests e as restrições de agendamento: declarar um Pod extra não cria CPU, memória ou nós automaticamente.", links: [{ label: "Kubernetes — recursos de contêiner", url: "https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/" }] },
+      { id: "max-unavailable", name: "maxUnavailable", badge: "purple", desc: "Partindo das 3 réplicas, maxUnavailable define quanto da capacidade desejada pode ficar indisponível durante o rollout. Com 0, o controlador não deve reduzir voluntariamente a disponibilidade abaixo de 3 para fazer a troca. Isso não impede falhas externas; exige que a nova capacidade fique disponível antes da redução da antiga.", links: [] },
+      { id: "max-surge", name: "maxSurge", badge: "purple", desc: "Se não podemos retirar capacidade primeiro, precisamos criar espaço para a nova versão. maxSurge: 1 permite uma réplica extra acima das 3 desejadas. Assim, o novo ReplicaSet pode crescer antes de o antigo diminuir. Pods ainda em encerramento podem elevar temporariamente o total observado além de 4.", links: [] },
+      { id: "tempo-rollout", name: "minReadySeconds e deadline", badge: "gray", desc: "Os limites numéricos dependem de saber quando um Pod está realmente disponível. minReadySeconds exige um período contínuo de prontidão antes de contá-lo como disponível; progressDeadlineSeconds detecta falta de progresso. A v2 do projeto usa 5 e 180 segundos, respectivamente. A próxima etapa explica de onde vem essa prontidão.", links: [] }
     ]
   },
   {
     id: "saude",
     title: "Proteja o tráfego",
     track: "Health checks",
-    desc: "Objetivo: impedir tráfego prematuro e reinícios incorretos. Checkpoint: explicar a pergunta respondida por cada probe e o efeito de sua falha.",
+    desc: "Até aqui, dissemos que a nova réplica precisa ficar pronta antes da retirada da antiga. As probes transformam essa condição em verificações concretas. Vamos separar inicialização, prontidão para tráfego e necessidade de reinício, e depois cuidar da saída dos Pods antigos.",
     links: [
       { label: "Kubernetes — configure probes", url: "https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/" }
     ],
     items: [
-      { id: "startup-probe", name: "startupProbe: terminou de iniciar?", badge: "purple", desc: "Protege aplicações lentas. Enquanto não passa, readiness e liveness não começam. Se exceder o limite de falhas, o contêiner é reiniciado.", links: [] },
-      { id: "readiness-probe", name: "readinessProbe: pode receber tráfego?", badge: "purple", desc: "Quando falha, o Pod fica NotReady e sai dos backends regulares do Service. A falha de readiness não reinicia o contêiner.", links: [] },
-      { id: "liveness-probe", name: "livenessProbe: precisa reiniciar?", badge: "purple", desc: "Detecta estado irrecuperável. Uma configuração agressiva pode causar reinícios em cascata durante carga alta ou lentidão de dependências.", links: [] },
-      { id: "shutdown", name: "SIGTERM e encerramento gracioso", badge: "gray", desc: "Ao terminar, pare de aceitar trabalho novo e conclua requisições em andamento dentro de terminationGracePeriodSeconds. Use preStop apenas quando necessário.", links: [{ label: "Kubernetes — término de Pods", url: "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-flow" }] }
+      { id: "startup-probe", name: "startupProbe: terminou de iniciar?", badge: "purple", desc: "Começamos pelo nascimento do novo Pod: aplicações lentas podem precisar de tempo para carregar dados ou inicializar. Uma startupProbe, quando configurada, adia readiness e liveness até a inicialização ser aprovada. Ela é uma opção de configuração; os manifestos NGINX deste projeto não a incluem.", links: [] },
+      { id: "readiness-probe", name: "readinessProbe: pode receber tráfego?", badge: "purple", desc: "Depois de iniciar, o novo Pod precisa demonstrar que pode receber requisições. A readinessProbe controla essa participação no tráfego regular do Service, sem reiniciar o contêiner quando falha. É essa prontidão, junto de minReadySeconds quando configurado, que permite avançar a substituição com segurança.", links: [] },
+      { id: "liveness-probe", name: "livenessProbe: precisa reiniciar?", badge: "purple", desc: "Um Pod que já ficou pronto também pode travar depois. A livenessProbe trata esse caso: após falhas suficientes, o kubelet reinicia o contêiner. Diferentemente da readiness, sua finalidade não é apenas retirar tráfego. No NGINX do laboratório, consultar / é uma verificação simples, não uma prova completa da saúde de uma aplicação de negócio.", links: [] },
+      { id: "shutdown", name: "SIGTERM e encerramento gracioso", badge: "gray", desc: "Quando a nova réplica fica disponível, chega a hora de encerrar uma antiga. Essa saída também precisa ser segura: o tráfego deve deixar de chegar e as requisições em andamento precisam terminar dentro do período de graça. Assim fechamos o ciclo de entrada e saída dos Pods antes de executar o rollout.", links: [{ label: "Kubernetes — término de Pods", url: "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-flow" }] }
     ]
   },
   {
     id: "execucao",
     title: "Execute e observe",
     track: "Operação",
-    desc: "Objetivo: iniciar um rollout e acompanhar sua evolução. Checkpoint: usar status como gate e localizar a revisão executada.",
+    desc: "Com imagem, capacidade e verificações definidas, podemos aplicar a mudança e observar o resultado. Os comandos abaixo usam os arquivos reais da pasta kubernetes, em um cluster de teste configurado. Primeiro estabelecemos a v1; depois aplicamos a v2 e acompanhamos a troca, sem confundir status técnico com sucesso para o usuário.",
     links: [
       { label: "kubectl set image", url: "https://kubernetes.io/docs/reference/kubectl/generated/kubectl_set/kubectl_set_image/" },
       { label: "kubectl rollout", url: "https://kubernetes.io/docs/reference/kubectl/generated/kubectl_rollout/" }
     ],
     items: [
-      { id: "rollout-status", name: "rollout status com timeout", badge: "purple", desc: "Acompanhe a conclusão com timeout explícito. Em CI/CD, o comando deve funcionar como gate de sucesso ou falha.", links: [] },
-      { id: "history", name: "Histórico, pause e resume", badge: "gray", desc: "Consulte revisões com rollout history. Pause permite agrupar mudanças no Pod template; retome antes de tentar rollout undo.", links: [{ label: "kubectl rollout", url: "https://kubernetes.io/docs/reference/kubectl/generated/kubectl_rollout/" }] },
-      { id: "observe-metrics", name: "Métricas, logs e smoke tests", badge: "purple", desc: "Readiness não detecta todo bug funcional. Observe erros, latência, saturação, disponibilidade, SLOs, logs e testes pós-deploy.", links: [] }
+      { id: "rollout-status", name: "rollout status com timeout", badge: "purple", desc: "Depois de aplicar a v2, kubectl rollout status acompanha se a atualização concluiu. Um timeout limita quanto tempo o cliente espera; ele não desfaz a mudança nem para o controlador. Se houver erro ou timeout, o próximo passo é inspecionar o estado e o histórico, não assumir que ocorreu uma reversão.", links: [] },
+      { id: "history", name: "Histórico, pause e resume", badge: "gray", desc: "Para entender o resultado do status, precisamos saber qual revisão está sendo executada. O histórico registra mudanças do template e ajuda a escolher uma revisão para recuperação. Pause e resume controlam a continuidade de um rollout, mas pausar não é o mesmo que voltar à versão anterior.", links: [{ label: "kubectl rollout", url: "https://kubernetes.io/docs/reference/kubectl/generated/kubectl_rollout/" }] },
+      { id: "observe-metrics", name: "Métricas, logs e smoke tests", badge: "purple", desc: "Mesmo quando o rollout termina, ainda precisamos responder à pergunta inicial: os usuários continuam sendo atendidos? Compare erros, latência e capacidade antes, durante e depois da troca. Logs e testes de requisição complementam o status; se algum sinal piorar, use os diagnósticos da próxima etapa.", links: [] }
     ]
   },
   {
     id: "falhas",
     title: "Diagnostique falhas",
     track: "Troubleshooting",
-    desc: "Objetivo: identificar por que o rollout parou antes de agir. Checkpoint: ligar cada sintoma ao comando e à hipótese de investigação.",
+    desc: "Quando o status não conclui ou as requisições pioram, investigue em que ponto a nova versão falhou: obtenção da imagem, execução, readiness ou agendamento. Os cards a seguir são caminhos alternativos de diagnóstico, não uma sequência de erros que todos os rollouts precisam apresentar.",
     links: [
       { label: "Kubernetes — depure aplicações", url: "https://kubernetes.io/docs/tasks/debug/debug-application/" }
     ],
     items: [
-      { id: "image-pull", name: "ImagePullBackOff", badge: "purple", desc: "Verifique nome, tag, acesso ao registry, imagePullSecrets e Events com kubectl describe pod.", links: [] },
-      { id: "crash-loop", name: "CrashLoopBackOff", badge: "purple", desc: "Investigue falhas de processo e configuração com logs, kubectl logs --previous, describe e Events.", links: [] },
-      { id: "never-ready", name: "Readiness nunca passa", badge: "purple", desc: "Confira endpoint, porta, timeout, dependências, logs e EndpointSlices. O Pod pode estar Running sem entrar no Service.", links: [] },
-      { id: "pod-pending", name: "Pod permanece Pending", badge: "purple", desc: "Procure falta de CPU, memória, volume, quotas ou restrições de agendamento. Requests incorretos podem impedir o Pod de surge.", links: [{ label: "Kubernetes — recursos", url: "https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/" }] },
-      { id: "bug-funcional", name: "Bug depois da readiness", badge: "gray", desc: "Uma probe simples pode passar mesmo com erro de negócio, latência ou incompatibilidade. Cruze smoke tests com métricas e logs.", links: [] }
+      { id: "image-pull", name: "ImagePullBackOff", badge: "purple", desc: "Comece verificando se o nó conseguiu obter a imagem. ImagePullBackOff indica falha de download com espera crescente entre tentativas. No laboratório, uma tag inexistente provoca esse caso: o Pod candidato não fica pronto e, com a política configurada, as 3 réplicas estáveis não são retiradas para dar lugar a ele.", links: [] },
+      { id: "crash-loop", name: "CrashLoopBackOff", badge: "purple", desc: "Se a imagem foi obtida, mas o contêiner reinicia repetidamente, investigue CrashLoopBackOff. Diferentemente do erro de download, aqui o processo chegou a ser executado. Logs da execução anterior e o motivo do término ajudam a separar erro da aplicação, configuração, falta de memória e reinícios por liveness.", links: [] },
+      { id: "never-ready", name: "Readiness nunca passa", badge: "purple", desc: "Outra possibilidade é o contêiner continuar em execução, mas nunca ficar Ready. Nesse caso, a troca pode não avançar porque falta nova capacidade disponível. Retome a configuração de readiness: confira a rota, a porta, os limites de tempo e se o Service seleciona os Pods esperados.", links: [] },
+      { id: "pod-pending", name: "Pod permanece Pending", badge: "purple", desc: "Se a nova réplica ainda não conseguiu iniciar, olhe também para o agendamento e a preparação do Pod. Pending pode envolver falta de recursos, volumes ou outras condições de inicialização; os Events indicam o motivo. Isso retoma o planejamento de surge: sem espaço para a réplica extra, a atualização pode ficar bloqueada.", links: [{ label: "Kubernetes — recursos", url: "https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/" }] },
+      { id: "bug-funcional", name: "Bug depois da readiness", badge: "gray", desc: "Por fim, um rollout pode concluir sem esses erros e ainda entregar uma versão defeituosa. Uma resposta bem-sucedida na rota / não garante que uma compra ou outra jornada funcione. Esse é o motivo para combinar probes com testes e métricas; havendo impacto, precisamos decidir como recuperar o serviço.", links: [] }
     ]
   },
   {
     id: "rollback",
     title: "Reverta com segurança",
     track: "Recuperação",
-    desc: "Objetivo: restaurar uma revisão anterior sem confundir rollback com retorno instantâneo. Checkpoint: executar o runbook e validar a estabilização.",
+    desc: "Depois de identificar a falha e avaliar o impacto, podemos restaurar um template conhecido. No roteiro do laboratório, a v2 funciona e a revisão seguinte tem uma imagem inválida: o rollback deve recuperar a v2, não necessariamente a v1. A reversão também precisa ser acompanhada e validada.",
     links: [
       { label: "Kubernetes — rollback de Deployment", url: "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-a-deployment" }
     ],
     items: [
-      { id: "stop-promotion", name: "Pare a promoção e confirme impacto", badge: "purple", desc: "Interrompa a próxima etapa do pipeline e confirme o impacto em status, Pods, Events, logs e métricas antes de reverter.", links: [] },
-      { id: "validate-recovery", name: "Valide depois da reversão", badge: "purple", desc: "Confirme erros, latência, tráfego e capacidade. Depois corrija a causa e publique outra imagem com nova tag ou digest.", links: [] },
-      { id: "data-migrations", name: "Banco e efeitos externos", badge: "gray", desc: "Rollback de imagem não desfaz migrações, mensagens publicadas ou alterações externas. Schemas precisam ser compatíveis entre versões ou ter estratégia própria.", links: [] }
+      { id: "stop-promotion", name: "Pare a promoção e confirme impacto", badge: "purple", desc: "Antes de reverter, impeça que a revisão defeituosa avance para outros ambientes e preserve evidências. Confira o histórico e qual imagem estava estável. Interromper a promoção no pipeline não equivale a pausar o Deployment; se ele estiver pausado, será necessário retomá-lo antes de executar undo.", links: [] },
+      { id: "validate-recovery", name: "Valide depois da reversão", badge: "purple", desc: "Após o undo, volte aos mesmos sinais usados na execução: rollout concluído, réplicas disponíveis e requisições funcionando. Remover o Pod com erro não basta para declarar recuperação. Registre a causa e entregue a correção como um novo artefato rastreável, fechando o ciclo iniciado na preparação da imagem.", links: [] },
+      { id: "data-migrations", name: "Banco e efeitos externos", badge: "gray", desc: "Há um limite importante para essa recuperação: o undo restaura o template, mas não desfaz alterações no banco, mensagens ou chamadas externas. Isso retoma a compatibilidade entre v1 e v2 citada no início. Em aplicações com estado, planeje migrações compatíveis e recuperação dos dados antes da publicação.", links: [] }
     ]
   },
   {
     id: "pipeline",
     title: "Automatize a entrega",
     track: "CI/CD",
-    desc: "Objetivo: transformar o rollout em uma etapa observável da entrega. Checkpoint: desenhar um pipeline que interrompe a promoção diante de falha técnica ou regressão.",
+    desc: "Agora que entendemos manualmente a entrega, a observação e a recuperação, podemos automatizar esse mesmo fluxo. Um pipeline conecta validação, artefato rastreável, deploy e verificação do resultado. A automação deve repetir as decisões seguras que acabamos de estudar, não apenas executar comandos mais rápido.",
     links: [
       { label: "Docker — boas práticas de build", url: "https://docs.docker.com/build/building-best-practices/" }
     ],
     items: [
-      { id: "quality-gates", name: "Testes e validações de qualidade", badge: "purple", desc: "Comece com revisão de código, testes unitários, integração e validações antes de produzir o artefato.", links: [] },
-      { id: "supply-chain", name: "Scan, SBOM e assinatura", badge: "gray", desc: "Analise vulnerabilidades e registre SBOM e assinatura quando essas práticas forem adotadas pela equipe.", links: [] },
-      { id: "pipeline-gates", name: "Timeouts e gates de rollout", badge: "purple", desc: "Interrompa a promoção quando o rollout não conclui, as métricas pioram ou testes pós-deploy falham.", links: [] },
-      { id: "auto-rollback", name: "Rollback exige automação externa", badge: "gray", desc: "O Deployment nativo sinaliza falta de progresso, mas não faz rollback automático. Essa lógica pertence ao pipeline ou a um controlador especializado.", links: [{ label: "Argo Rollouts — visão geral", url: "https://argoproj.github.io/rollouts/" }] }
+      { id: "quality-gates", name: "Testes e validações de qualidade", badge: "purple", desc: "O primeiro controle acontece antes do cluster: revisar e testar a mudança reduz a chance de publicar um defeito. Neste repositório estático, podemos verificar o JavaScript e validar os manifestos; em uma aplicação de negócio, acrescentamos testes unitários e de integração. Cada falha deve interromper o avanço.", links: [] },
+      { id: "supply-chain", name: "Scan, SBOM e assinatura", badge: "gray", desc: "Depois de validar o código, precisamos avaliar o artefato que realmente será executado. Scan, SBOM e assinatura complementam tag e digest: ajudam a investigar vulnerabilidades, conhecer os componentes e verificar a origem. Essas ferramentas são opcionais neste projeto e dependem da política e da infraestrutura da equipe.", links: [] },
+      { id: "pipeline-gates", name: "Timeouts e gates de rollout", badge: "purple", desc: "Uma imagem aprovada ainda precisa provar que funciona no ambiente. Após o deploy, use o status com timeout e testes de requisição como barreiras para a promoção. A mesma observação feita manualmente passa a decidir se o pipeline pode continuar; status concluído sozinho não aprova uma versão.", links: [] },
+      { id: "auto-rollback", name: "Rollback exige automação externa", badge: "gray", desc: "Quando uma dessas barreiras falha, alguém precisa decidir a recuperação. O Deployment não executa rollback automático por atingir progressDeadlineSeconds: isso exige lógica no pipeline ou um controlador especializado. Os critérios devem considerar o impacto e os efeitos externos para não automatizar uma reversão insegura.", links: [{ label: "Argo Rollouts — visão geral", url: "https://argoproj.github.io/rollouts/" }] }
     ]
   },
   {
     id: "estrategias",
     title: "Escolha a estratégia",
     track: "Decisão",
-    desc: "Objetivo: escolher a abordagem de atualização pelo risco, capacidade e necessidade de controle de tráfego. Checkpoint: justificar quando RollingUpdate deixa de ser a melhor escolha.",
+    desc: "Automatizar o processo também permite perguntar se RollingUpdate é a estratégia adequada. Sem mudar o problema original, vamos comparar as alternativas pela coexistência de versões, capacidade adicional e controle de tráfego. A escolha vem agora porque já conhecemos os custos e limites da troca gradual.",
     links: [
       { label: "Argo Rollouts — conceitos", url: "https://argoproj.github.io/argo-rollouts/concepts/" }
     ],
     items: [
-      { id: "recreate", name: "Recreate", badge: "gray", desc: "Encerra Pods antigos antes de criar os novos. Evita coexistência de versões, mas normalmente causa downtime.", links: [] },
-      { id: "rolling-update", name: "RollingUpdate", badge: "purple", desc: "Troca Pods gradualmente com baixa complexidade operacional. Funciona melhor quando v1 e v2 podem coexistir e a readiness é confiável.", links: [] },
-      { id: "blue-green", name: "Blue-Green", badge: "gray", desc: "Mantém dois ambientes completos e troca o tráfego após validar o novo. Permite retorno rápido, mas exige capacidade próxima do dobro.", links: [] },
-      { id: "canary", name: "Canary", badge: "gray", desc: "Expõe uma parcela do tráfego à nova versão. Controle preciso normalmente exige Ingress, Service Mesh ou um controlador como Argo Rollouts.", links: [{ label: "Argo Rollouts — Canary", url: "https://argoproj.github.io/argo-rollouts/features/canary/" }] }
+      { id: "recreate", name: "Recreate", badge: "gray", desc: "Retomando o risco da troca abrupta, Recreate encerra os Pods antigos antes de criar os novos durante uma atualização. Pode ser uma escolha deliberada quando a coexistência é indesejada e uma janela de indisponibilidade é aceita. Esse comportamento contrasta com a continuidade buscada no nosso laboratório.", links: [] },
+      { id: "rolling-update", name: "RollingUpdate", badge: "purple", desc: "É a estratégia que construímos ao longo do roteiro: adicionar capacidade nova e retirar a antiga gradualmente. Para o astro-demo, mantemos 3 réplicas, surge 1 e indisponibilidade permitida 0. Ela favorece continuidade, mas não oferece, por si só, uma distribuição exata da porcentagem de tráfego entre versões.", links: [] },
+      { id: "blue-green", name: "Blue-Green", badge: "gray", desc: "Se a necessidade for validar uma versão completa antes de mudar o tráfego, Blue-Green mantém ambientes atual e candidato separados. Em vez de substituir gradualmente os Pods do mesmo Deployment, a troca acontece no direcionamento do tráfego. O retorno pode ser rápido, desde que a versão anterior e os dados continuem compatíveis.", links: [] },
+      { id: "canary", name: "Canary", badge: "gray", desc: "Se o principal risco for expor todos os usuários a um bug funcional, Canary começa com uma parcela menor de tráfego na nova versão. As métricas usadas nos gates orientam a ampliação dessa parcela. Diferentemente do RollingUpdate nativo, controle preciso de tráfego exige recursos adicionais.", links: [{ label: "Argo Rollouts — Canary", url: "https://argoproj.github.io/argo-rollouts/features/canary/" }] }
     ]
   },
   {
     id: "prova-final",
     title: "Prove baixo downtime",
     track: "Missão prática",
-    desc: "Objetivo: demonstrar atualização, falha e recuperação em um cluster de teste. Checkpoint final: manter tráfego, observar a troca, provocar ImagePullBackOff e concluir um rollback.",
+    desc: "Para fechar o fluxo, vamos relacionar teoria e evidência: partir da v1, atualizar para v2, provocar uma falha de imagem e recuperar a versão estável. Concluir os subtópicos libera o laboratório do site, que é uma simulação local. Os comandos abaixo são uma alternativa real para um cluster de teste; a animação não comprova disponibilidade em produção.",
     links: [
       { label: "kind — cluster local", url: "https://kind.sigs.k8s.io/" },
       { label: "minikube — documentação", url: "https://minikube.sigs.k8s.io/docs/" }
     ],
     items: [
-      { id: "low-downtime-checklist", name: "Checklist de produção", badge: "purple", desc: "Valide réplicas, readiness, selector, surge, requests, shutdown, compatibilidade, estado externo, distribuição, observabilidade e runbook de rollback.", links: [{ label: "Kubernetes — disruptions", url: "https://kubernetes.io/docs/concepts/workloads/pods/disruptions/" }] }
+      { id: "low-downtime-checklist", name: "Checklist de produção", badge: "purple", desc: "Este checklist reúne as decisões anteriores, da capacidade à recuperação. Antes da demonstração, confirme o ambiente e os manifestos; durante a troca, observe prontidão e requisições; após a falha, explique por que a versão estável permaneceu e como foi recuperada. O resultado deve ser sustentado por evidências, não apenas pela conclusão dos cards.", links: [{ label: "Kubernetes — disruptions", url: "https://kubernetes.io/docs/concepts/workloads/pods/disruptions/" }] }
     ]
   }
 ];
@@ -171,9 +171,9 @@ const DATA = [
 const PANEL_DETAILS = {
   fundamentos: {
     points: [
-      "Uma atualização segura mantém instâncias antigas disponíveis enquanto as novas ficam prontas.",
-      "Rolling Update reduz o risco de indisponibilidade, mas depende de réplicas, probes e capacidade.",
-      "O objetivo não é prometer zero downtime: é controlar a troca e medir o resultado."
+      "O objetivo da apresentação é acompanhar uma única mudança: astro-demo da v1 para a v2, mantendo o atendimento.",
+      "Primeiro entendemos o risco; depois configuramos a troca, observamos o resultado e praticamos a recuperação.",
+      "Ao final, o laboratório reúne esses conceitos em uma sequência de atualização, falha e rollback."
     ],
     note: "Comece comparando uma troca abrupta com uma troca gradual. Essa imagem mental prepara o restante da apresentação."
   },
@@ -203,7 +203,7 @@ const PANEL_DETAILS = {
     code: {
       language: "YAML",
       title: "Estratégia mínima",
-      content: ["strategy:", "  type: RollingUpdate", "  rollingUpdate:", "    maxSurge: 1", "    maxUnavailable: 0"].join("\n")
+      content: ["strategy:","  type: RollingUpdate","  rollingUpdate:","    maxSurge: 1","    maxUnavailable: 0"].join("\n")
     }
   },
   "limites-rolling": {
@@ -216,22 +216,22 @@ const PANEL_DETAILS = {
   },
   arquitetura: {
     points: [
-      "Deployment declara o estado desejado e cria revisões por meio de ReplicaSets.",
-      "ReplicaSets mantêm as versões antiga e nova durante a transição.",
-      "O Service envia tráfego apenas aos endpoints que correspondem ao selector e estão Ready."
+      "O Deployment coordena ReplicaSets; cada ReplicaSet mantém os Pods de um template.",
+      "O Service não fica entre o Deployment e os Pods na cadeia de criação: ele seleciona endpoints para encaminhar tráfego.",
+      "Manter app: astro-demo nas duas versões permite que o mesmo Service atenda durante a coexistência."
     ],
     note: "Apresente o fluxo como uma cadeia: Deployment → ReplicaSet → Pod Ready → Service."
   },
   deployment: {
     points: [
-      "O Pod template contém imagem, portas, recursos, probes e labels.",
-      "Qualquer alteração em spec.template cria uma nova revisão do Deployment.",
-      "O controlador reconcilia continuamente o estado real com o estado desejado."
+      "O exemplo é um recorte didático; o manifesto completo com estratégia e readiness está em kubernetes/deployment-v1.yaml.",
+      "O selector do Deployment precisa corresponder aos labels do template; o Service também usa app: astro-demo.",
+      "Uma mudança no template dispara o rollout; o ReplicaSet apresentado a seguir mantém os Pods dessa versão."
     ],
     code: {
       language: "YAML",
       title: "Recorte de um Deployment",
-      content: ["apiVersion: apps/v1", "kind: Deployment", "metadata:", "  name: api", "spec:", "  replicas: 3", "  selector:", "    matchLabels:", "      app: api", "  template:", "    metadata:", "      labels:", "        app: api", "    spec:", "      containers:", "        - name: api", "          image: registry/api:1.4.0"].join("\n")
+      content: ["# Recorte; use deployment-v1.yaml para o manifesto completo","apiVersion: apps/v1","kind: Deployment","metadata:","  name: astro-demo","spec:","  replicas: 3","  selector:","    matchLabels:","      app: astro-demo","  template:","    metadata:","      labels:","        app: astro-demo","    spec:","      containers:","        - name: web","          image: nginx:1.25-alpine"].join("\n")
     }
   },
   replicaset: {
@@ -243,19 +243,19 @@ const PANEL_DETAILS = {
     code: {
       language: "Shell",
       title: "Veja as versões coexistindo",
-      content: ["kubectl get deploy api", "kubectl get rs -l app=api", "kubectl get pods -l app=api -o wide"].join("\n")
+      content: ["kubectl get deploy astro-demo","kubectl get rs -l app=astro-demo","kubectl get pods -l app=astro-demo -o wide"].join("\n")
     }
   },
   "pods-ready": {
     points: [
-      "Running informa que o contêiner iniciou; Ready informa que ele pode receber tráfego.",
-      "Um Pod pode estar Running e continuar fora dos endpoints do Service.",
-      "A condição Ready deve representar a capacidade real de atender requisições."
+      "Running é uma fase do Pod; não garante que todos os seus contêineres estejam prontos para atender.",
+      "Na saída padrão de kubectl get pods, a coluna READY mostra contêineres prontos; a condição Ready pertence ao Pod.",
+      "Os EndpointSlices permitem conferir quais Pods selecionados pelo Service estão prontos; as probes serão detalhadas na etapa de saúde."
     ],
     code: {
       language: "Shell",
       title: "Compare estado e prontidão",
-      content: ["kubectl get pods -l app=api", "kubectl get endpointslices -l kubernetes.io/service-name=api"].join("\n")
+      content: ["kubectl get pods -l app=astro-demo","kubectl get endpointslices -l kubernetes.io/service-name=astro-demo"].join("\n")
     }
   },
   artefato: {
@@ -268,14 +268,14 @@ const PANEL_DETAILS = {
   },
   "tag-digest": {
     points: [
-      "Tags são nomes legíveis e podem ser alteradas; digest é o identificador imutável do conteúdo.",
-      "latest não mostra qual build está em execução e dificulta auditoria e rollback.",
-      "Uma boa tag pode incluir versão, número do build ou SHA curto do commit."
+      "Uma tag pode ser movida para outro conteúdo; use tags únicas e políticas de imutabilidade para rastrear builds.",
+      "O digest fixa o conteúdo e permite promover o mesmo artefato entre ambientes, sem reconstruí-lo.",
+      "O comando abaixo apenas inspeciona a imagem pronta usada na v2; construir e publicar uma imagem própria exige Dockerfile e acesso a um registry."
     ],
     code: {
       language: "Shell",
-      title: "Build e publicação rastreáveis",
-      content: ["docker build -t registry/api:1.4.0 .", "docker push registry/api:1.4.0", "docker inspect --format='{{index .RepoDigests 0}}' registry/api:1.4.0"].join("\n")
+      title: "Inspecione o digest da imagem da v2",
+      content: ["# Requer Docker; inspeciona a imagem usada na v2","docker pull nginx:1.27-alpine","docker image inspect nginx:1.27-alpine --format '{{json .RepoDigests}}'"].join("\n")
     }
   },
   "pod-template": {
@@ -286,8 +286,8 @@ const PANEL_DETAILS = {
     ],
     code: {
       language: "Shell",
-      title: "Atualize a imagem declarada",
-      content: ["kubectl set image deployment/api \\", "  api=registry/api:1.4.0", "kubectl rollout status deployment/api --timeout=5m"].join("\n")
+      title: "Compare a configuração da v2",
+      content: ["# Compare os arquivos antes de aplicar na etapa de execução","kubectl diff -f kubernetes/deployment-v2.yaml","# diff: 0 = sem diferenças; 1 = diferenças; >1 = erro","# A v2 também acrescenta probes, recursos e tempos ao template."].join("\n")
     }
   },
   estrategia: {
@@ -299,7 +299,7 @@ const PANEL_DETAILS = {
     code: {
       language: "YAML",
       title: "Disponibilidade conservadora",
-      content: ["spec:", "  replicas: 4", "  strategy:", "    type: RollingUpdate", "    rollingUpdate:", "      maxSurge: 1", "      maxUnavailable: 0"].join("\n")
+      content: ["spec:","  replicas: 3","  strategy:","    type: RollingUpdate","    rollingUpdate:","      maxSurge: 1","      maxUnavailable: 0"].join("\n")
     }
   },
   replicas: {
@@ -311,29 +311,29 @@ const PANEL_DETAILS = {
     code: {
       language: "Shell",
       title: "Ajuste e confirme a capacidade",
-      content: ["kubectl scale deployment/api --replicas=3", "kubectl get pods -l app=api -o wide", "kubectl top pods -l app=api"].join("\n")
+      content: ["kubectl scale deployment/astro-demo --replicas=3","kubectl get pods -l app=astro-demo -o wide","kubectl top pods -l app=astro-demo"].join("\n")
     }
   },
   "max-unavailable": {
     points: [
-      "Valor 0 tenta manter toda a capacidade desejada disponível durante a atualização.",
-      "Um valor maior acelera a troca, mas reduz a margem para picos ou falhas.",
-      "Percentuais de maxUnavailable são arredondados para baixo."
+      "Com 3 réplicas e valor 0, o objetivo do controlador é preservar 3 disponíveis durante a substituição.",
+      "Com 25% de 3, o arredondamento para baixo resulta em 0; valores inteiros deixam o exemplo mais explícito.",
+      "Esse limite controla a atualização, mas não garante atendimento diante de falhas de nós, rede ou da própria aplicação."
     ],
-    note: "Com 4 réplicas e 25%, no máximo 1 pode ficar indisponível durante o rollout.",
+    note: "Com 3 réplicas, maxUnavailable de 25% arredonda para 0.",
     code: {
       language: "YAML",
       title: "Preserve todas as réplicas",
-      content: ["rollingUpdate:", "  maxUnavailable: 0", "  maxSurge: 1"].join("\n")
+      content: ["rollingUpdate:","  maxUnavailable: 0","  maxSurge: 1"].join("\n")
     }
   },
   "max-surge": {
     points: [
-      "Surge permite criar capacidade nova antes de remover a antiga.",
-      "Quanto maior o valor, mais rápida pode ser a atualização e maior o consumo temporário.",
-      "Percentuais de maxSurge são arredondados para cima."
+      "Com 3 réplicas e surge 1, há espaço para uma réplica candidata antes da retirada de uma antiga.",
+      "Com 25% de 3, o arredondamento para cima também resulta em 1; surge e unavailable não podem ser ambos zero.",
+      "Reserve recursos para essa sobreposição e para Pods em encerramento, que podem continuar consumindo capacidade."
     ],
-    note: "Com 4 réplicas e maxSurge 1, podem existir até 5 Pods durante a troca."
+    note: "Com 3 réplicas e surge 1, há uma réplica extra; Pods em encerramento podem elevar o total observado."
   },
   "tempo-rollout": {
     points: [
@@ -344,7 +344,7 @@ const PANEL_DETAILS = {
     code: {
       language: "YAML",
       title: "Tempo para estabilização",
-      content: ["spec:", "  minReadySeconds: 15", "  progressDeadlineSeconds: 600"].join("\n")
+      content: ["# Recorte de kubernetes/deployment-v2.yaml","spec:","  minReadySeconds: 5","  progressDeadlineSeconds: 180"].join("\n")
     }
   },
   saude: {
@@ -357,26 +357,26 @@ const PANEL_DETAILS = {
   },
   "startup-probe": {
     points: [
-      "Enquanto startupProbe não passa, liveness e readiness ficam suspensas.",
-      "Ela evita que aplicações lentas sejam reiniciadas antes de terminar a inicialização.",
-      "O limite total é failureThreshold multiplicado por periodSeconds."
+      "Quando configurada, a startupProbe precisa passar antes de readiness e liveness começarem.",
+      "O exemplo usa / na porta 80 para combinar com o NGINX; numa aplicação própria, a rota deve refletir a inicialização real.",
+      "30 tentativas com intervalo de 5 segundos dão uma janela nominal de cerca de 150 segundos; atraso inicial e duração das verificações também importam."
     ],
     code: {
       language: "YAML",
-      title: "Até 150 segundos para iniciar",
-      content: ["startupProbe:", "  httpGet:", "    path: /health/startup", "    port: 8080", "  periodSeconds: 5", "  failureThreshold: 30"].join("\n")
+      title: "Janela de inicialização ilustrativa",
+      content: ["# Opcional: inserir no contêiner, não na raiz do manifesto","startupProbe:","  httpGet:","    path: /","    port: 80","  periodSeconds: 5","  failureThreshold: 30"].join("\n")
     }
   },
   "readiness-probe": {
     points: [
-      "Falha de readiness remove o Pod do tráfego sem reiniciar o processo.",
-      "A verificação deve incluir apenas dependências necessárias para atender naquele momento.",
-      "Uma probe permissiva libera tráfego cedo; uma agressiva pode retirar Pods saudáveis."
+      "No manifesto do projeto, a verificação HTTP consulta / pela porta nomeada http, ligada à porta 80.",
+      "Após falhas suficientes, o Pod deixa de ser Ready; essa verificação não reinicia o contêiner.",
+      "Escolha uma verificação representativa: responder na página inicial não comprova todas as funcionalidades da aplicação."
     ],
     code: {
       language: "YAML",
       title: "Libere o tráfego quando estiver pronto",
-      content: ["readinessProbe:", "  httpGet:", "    path: /health/ready", "    port: 8080", "  periodSeconds: 5", "  timeoutSeconds: 2", "  failureThreshold: 3"].join("\n")
+      content: ["# Recorte do contêiner web na v2","readinessProbe:","  httpGet:","    path: /","    port: http","  initialDelaySeconds: 2","  periodSeconds: 3","  timeoutSeconds: 2","  failureThreshold: 3"].join("\n")
     }
   },
   "liveness-probe": {
@@ -388,19 +388,19 @@ const PANEL_DETAILS = {
     code: {
       language: "YAML",
       title: "Detecte travamento do processo",
-      content: ["livenessProbe:", "  httpGet:", "    path: /health/live", "    port: 8080", "  periodSeconds: 10", "  timeoutSeconds: 2", "  failureThreshold: 3"].join("\n")
+      content: ["# Recorte do contêiner web na v2","livenessProbe:","  httpGet:","    path: /","    port: http","  initialDelaySeconds: 10","  periodSeconds: 10","  timeoutSeconds: 2","  failureThreshold: 3"].join("\n")
     }
   },
   shutdown: {
     points: [
-      "Ao receber SIGTERM, a aplicação deve parar de aceitar trabalho novo.",
-      "Requisições em andamento precisam terminar dentro do período de graça.",
-      "preStop pode ajudar na drenagem, mas não substitui o tratamento correto de sinais."
+      "O período de graça inclui a execução de preStop, quando há esse hook, e o encerramento do processo.",
+      "A aplicação deve tratar o sinal de término e concluir o trabalho em andamento antes do fim desse prazo.",
+      "Uma espera fixa em preStop não garante drenagem; valide sinais, conexões e comportamento do servidor utilizado."
     ],
     code: {
       language: "YAML",
       title: "Janela para encerramento",
-      content: ["spec:", "  terminationGracePeriodSeconds: 30", "  containers:", "    - name: api", "      lifecycle:", "        preStop:", "          exec:", "            command: [\"sh\", \"-c\", \"sleep 5\"]"].join("\n")
+      content: ["# Em spec.template.spec, como no manifesto v2","terminationGracePeriodSeconds: 30","# O tratamento do sinal depende do servidor da imagem.","# Configure preStop apenas se houver necessidade validada."].join("\n")
     }
   },
   execucao: {
@@ -412,7 +412,7 @@ const PANEL_DETAILS = {
     code: {
       language: "Shell",
       title: "Fluxo mínimo de execução",
-      content: ["kubectl set image deploy/api api=registry/api:1.4.0", "kubectl rollout status deploy/api --timeout=5m", "kubectl get pods -l app=api -w"].join("\n")
+      content: ["# Cluster de teste configurado; execute na raiz do projeto","kubectl apply -f kubernetes/service.yaml","kubectl apply -f kubernetes/deployment-v1.yaml","kubectl rollout status deployment/astro-demo --timeout=5m","# Com a v1 disponível, publique a v2","kubectl apply -f kubernetes/deployment-v2.yaml","kubectl rollout status deployment/astro-demo --timeout=5m"].join("\n")
     }
   },
   "rollout-status": {
@@ -424,7 +424,7 @@ const PANEL_DETAILS = {
     code: {
       language: "Shell",
       title: "Use o status como gate",
-      content: ["kubectl rollout status deployment/api --timeout=5m", "kubectl get deployment api", "kubectl describe deployment api"].join("\n")
+      content: ["kubectl rollout status deployment/astro-demo --timeout=5m","kubectl get deployment astro-demo","kubectl describe deployment astro-demo"].join("\n")
     }
   },
   history: {
@@ -436,7 +436,7 @@ const PANEL_DETAILS = {
     code: {
       language: "Shell",
       title: "Inspecione e controle a revisão",
-      content: ["kubectl rollout history deployment/api", "kubectl rollout pause deployment/api", "kubectl rollout resume deployment/api"].join("\n")
+      content: ["kubectl rollout history deployment/astro-demo","kubectl rollout pause deployment/astro-demo","kubectl rollout resume deployment/astro-demo"].join("\n")
     }
   },
   "observe-metrics": {
@@ -448,7 +448,7 @@ const PANEL_DETAILS = {
     code: {
       language: "Shell",
       title: "Observação rápida no cluster",
-      content: ["kubectl get pods -l app=api -w", "kubectl logs -l app=api --tail=100 --prefix", "kubectl get events --sort-by=.lastTimestamp"].join("\n")
+      content: ["kubectl logs -l app=astro-demo --tail=100 --prefix","kubectl get events --sort-by=.lastTimestamp","# Em outro terminal: Ctrl+C encerra apenas a observação","kubectl get pods -l app=astro-demo -w"].join("\n")
     }
   },
   falhas: {
@@ -460,7 +460,7 @@ const PANEL_DETAILS = {
     code: {
       language: "Shell",
       title: "Triagem inicial",
-      content: ["kubectl get pods -l app=api", "kubectl describe pod <pod>", "kubectl logs <pod> --previous", "kubectl get events --sort-by=.lastTimestamp"].join("\n")
+      content: ["kubectl get pods -l app=astro-demo","kubectl describe deployment astro-demo","kubectl get events --sort-by=.lastTimestamp","# Substitua POD_NAME pelo nome real do Pod investigado","kubectl describe pod POD_NAME","# Use logs --previous apenas se houve execução anterior"].join("\n")
     }
   },
   "image-pull": {
@@ -472,7 +472,7 @@ const PANEL_DETAILS = {
     code: {
       language: "Shell",
       title: "Localize o erro de download",
-      content: ["kubectl describe pod <pod>", "kubectl get secret", "kubectl get pod <pod> -o jsonpath='{.status.containerStatuses[*].state.waiting.message}'"].join("\n")
+      content: ["# Substitua POD_NAME pelo Pod com ErrImagePull/ImagePullBackOff","kubectl describe pod POD_NAME","kubectl get pod POD_NAME -o jsonpath='{.status.containerStatuses[*].state.waiting.message}'","# Se a imagem nunca iniciou, ainda não haverá logs do processo."].join("\n")
     }
   },
   "crash-loop": {
@@ -484,7 +484,7 @@ const PANEL_DETAILS = {
     code: {
       language: "Shell",
       title: "Veja a falha anterior",
-      content: ["kubectl logs <pod> --previous", "kubectl describe pod <pod>", "kubectl get pod <pod> -o yaml"].join("\n")
+      content: ["# Substitua POD_NAME pelo nome real; --previous exige execução anterior","kubectl logs POD_NAME --previous","kubectl describe pod POD_NAME","kubectl get pod POD_NAME -o yaml"].join("\n")
     }
   },
   "never-ready": {
@@ -496,19 +496,19 @@ const PANEL_DETAILS = {
     code: {
       language: "Shell",
       title: "Investigue a prontidão",
-      content: ["kubectl describe pod <pod>", "kubectl exec <pod> -- wget -qO- localhost:8080/health/ready", "kubectl get endpointslices -l kubernetes.io/service-name=api"].join("\n")
+      content: ["# Substitua POD_NAME pelo Pod que não fica Ready","kubectl describe pod POD_NAME","kubectl exec POD_NAME -- wget -qO- http://localhost:80/","kubectl get endpointslices -l kubernetes.io/service-name=astro-demo -o yaml","# O wget depende de estar disponível na imagem."].join("\n")
     }
   },
   "pod-pending": {
     points: [
-      "Pending geralmente indica que o scheduler ainda não encontrou onde executar o Pod.",
-      "Requests, quotas, volumes, taints e afinidade podem bloquear o agendamento.",
-      "Durante surge, o cluster precisa acomodar temporariamente mais Pods."
+      "Leia os Events para distinguir falta de agendamento de problemas na preparação dos contêineres.",
+      "Requests, volumes, taints e afinidade podem impedir a nova réplica; quotas também podem bloquear sua criação, aparecendo no ReplicaSet.",
+      "kubectl top requer Metrics Server e mostra uso observado; o scheduler considera requests, não apenas esse uso."
     ],
     code: {
       language: "Shell",
       title: "Leia a decisão do scheduler",
-      content: ["kubectl describe pod <pod>", "kubectl get nodes", "kubectl top nodes", "kubectl get resourcequota -A"].join("\n")
+      content: ["# Substitua POD_NAME pelo nome real; top requer Metrics Server","kubectl describe pod POD_NAME","kubectl get nodes","kubectl top nodes","kubectl get resourcequota -A"].join("\n")
     }
   },
   "bug-funcional": {
@@ -528,7 +528,7 @@ const PANEL_DETAILS = {
     code: {
       language: "Shell",
       title: "Reversão controlada",
-      content: ["kubectl rollout history deployment/api", "kubectl rollout undo deployment/api --to-revision=3", "kubectl rollout status deployment/api --timeout=5m"].join("\n")
+      content: ["kubectl rollout history deployment/astro-demo","# Após a imagem inválida, a revisão anterior deve ser a v2.","# Confirme o histórico antes de reverter.","kubectl rollout undo deployment/astro-demo","kubectl rollout status deployment/astro-demo --timeout=5m"].join("\n")
     }
   },
   "stop-promotion": {
@@ -540,7 +540,7 @@ const PANEL_DETAILS = {
     code: {
       language: "Shell",
       title: "Confirme revisão e impacto",
-      content: ["kubectl rollout history deployment/api", "kubectl get rs -l app=api", "kubectl get pods -l app=api --show-labels"].join("\n")
+      content: ["kubectl rollout history deployment/astro-demo","kubectl get rs -l app=astro-demo","kubectl get pods -l app=astro-demo --show-labels"].join("\n")
     }
   },
   "validate-recovery": {
@@ -552,7 +552,7 @@ const PANEL_DETAILS = {
     code: {
       language: "Shell",
       title: "Valide a estabilização",
-      content: ["kubectl rollout status deployment/api --timeout=5m", "kubectl get deploy api", "curl -fsS https://api.exemplo.com/health"].join("\n")
+      content: ["kubectl rollout status deployment/astro-demo --timeout=5m","kubectl get deployment astro-demo","kubectl get deployment astro-demo -o jsonpath='{.spec.template.spec.containers[0].image}'","# No roteiro, espere nginx:1.27-alpine após reverter a falha.","# Confira também as requisições e os logs do teste."].join("\n")
     }
   },
   "data-migrations": {
@@ -572,31 +572,31 @@ const PANEL_DETAILS = {
     code: {
       language: "Pipeline",
       title: "Sequência de entrega",
-      content: ["test → build → scan → publish", "             ↓", "deploy → rollout status → smoke test", "                         ↓", "                 promote ou rollback"].join("\n")
+      content: ["test → build → scan → publish","             ↓","deploy → rollout status → smoke test","                         ↓","                 promote ou rollback"].join("\n")
     }
   },
   "quality-gates": {
     points: [
-      "Testes unitários detectam regressões locais; integração valida contratos entre componentes.",
-      "Lint e validação de manifesto antecipam erros antes do cluster.",
-      "Gates devem falhar de forma clara e impedir a promoção."
+      "node --check verifica a sintaxe, mas não substitui testes de interação no navegador.",
+      "O dry-run no servidor valida o manifesto contra o cluster e exige contexto e permissões configurados.",
+      "Valide cada versão separadamente; aplicar a pasta inteira mistura v1, v2 e a falha proposital do laboratório."
     ],
     code: {
       language: "Shell",
       title: "Validações antes do deploy",
-      content: ["npm test", "docker build -t registry/api:1.4.0 .", "kubectl apply --dry-run=server -f k8s/"].join("\n")
+      content: ["# Verificação disponível neste projeto estático","node --check app.js","# Requer cluster de teste acessível","kubectl apply --dry-run=server -f kubernetes/deployment-v1.yaml","kubectl apply --dry-run=server -f kubernetes/deployment-v2.yaml","kubectl apply --dry-run=server -f kubernetes/service.yaml"].join("\n")
     }
   },
   "supply-chain": {
     points: [
-      "Scan procura vulnerabilidades conhecidas no artefato.",
-      "SBOM registra componentes e versões presentes na imagem.",
-      "Assinatura ajuda a comprovar origem e integridade antes da execução."
+      "Scan encontra vulnerabilidades conhecidas, mas não garante ausência de falhas.",
+      "SBOM registra os componentes; uma assinatura precisa ser verificada contra uma identidade ou chave confiável.",
+      "O exemplo é opcional, requer Trivy e Syft instalados e inspeciona a mesma imagem NGINX usada no roteiro."
     ],
     code: {
       language: "Shell",
       title: "Exemplo com ferramentas comuns",
-      content: ["trivy image registry/api:1.4.0", "syft registry/api:1.4.0 -o spdx-json > sbom.json", "cosign sign registry/api:1.4.0"].join("\n")
+      content: ["# Exemplos opcionais; requerem as ferramentas instaladas","trivy image nginx:1.27-alpine","syft nginx:1.27-alpine -o spdx-json","# Assine imagens próprias ao publicar e verifique sua origem","# antes do deploy, conforme a política adotada pela equipe."].join("\n")
     }
   },
   "pipeline-gates": {
@@ -608,7 +608,7 @@ const PANEL_DETAILS = {
     code: {
       language: "Shell",
       title: "Gate após o deploy",
-      content: ["kubectl rollout status deploy/api --timeout=5m", "curl -fsS https://api.exemplo.com/health", "npm run smoke:production"].join("\n")
+      content: ["# Exemplo de gate para um executor Bash com kubectl","set -e","kubectl apply -f kubernetes/deployment-v2.yaml","kubectl rollout status deployment/astro-demo --timeout=5m","# Conecte aqui os testes e a avaliação das métricas.","# Só promova a versão se todas essas verificações passarem."].join("\n")
     }
   },
   "auto-rollback": {
@@ -636,7 +636,7 @@ const PANEL_DETAILS = {
     code: {
       language: "YAML",
       title: "Estratégia Recreate",
-      content: ["spec:", "  strategy:", "    type: Recreate"].join("\n")
+      content: ["spec:","  strategy:","    type: Recreate"].join("\n")
     }
   },
   "rolling-update": {
@@ -648,7 +648,7 @@ const PANEL_DETAILS = {
     code: {
       language: "YAML",
       title: "Estratégia gradual",
-      content: ["spec:", "  strategy:", "    type: RollingUpdate", "    rollingUpdate:", "      maxSurge: 25%", "      maxUnavailable: 25%"].join("\n")
+      content: ["spec:","  replicas: 3","  strategy:","    type: RollingUpdate","    rollingUpdate:","      maxSurge: 1","      maxUnavailable: 0"].join("\n")
     }
   },
   "blue-green": {
@@ -669,21 +669,22 @@ const PANEL_DETAILS = {
   },
   "prova-final": {
     points: [
-      "Gere tráfego contínuo antes de iniciar a atualização.",
-      "Observe Pods antigos e novos coexistindo sem interromper as requisições.",
-      "Provoque uma imagem inválida, diagnostique e execute a recuperação."
+      "No site, conclua os subtópicos e use a sequência guiada: validar YAML → v1 → v2 → falha → rollback.",
+      "No cluster real, use apenas um ambiente de teste e execute os comandos da raiz do projeto; o gerador de tráfego registra OK ou FALHA.",
+      "Observe o tráfego pelo Service dentro do cluster. Port-forward é útil para acesso local, mas fica associado a um Pod e pode terminar quando ele é removido.",
+      "A imagem inválida deve bloquear a nova revisão; depois do undo, confira que nginx:1.27-alpine voltou e que o atendimento se manteve. A simulação não mede esse resultado real."
     ],
     code: {
       language: "Shell",
       title: "Roteiro resumido do laboratório",
-      content: ["while true; do curl -fsS http://localhost:8080; sleep 1; done", "kubectl set image deploy/api api=registry/api:2.0.0", "kubectl rollout status deploy/api --timeout=5m", "kubectl set image deploy/api api=registry/api:nao-existe", "kubectl rollout undo deploy/api"].join("\n")
+      content: ["# Cluster de teste configurado; comandos na raiz do projeto","kubectl apply -f kubernetes/service.yaml","kubectl apply -f kubernetes/deployment-v1.yaml","kubectl rollout status deployment/astro-demo --timeout=5m","# Crie o observador uma vez; requer acesso à imagem BusyBox","kubectl run astro-traffic --image=busybox:1.36 --restart=Never --command -- sh -c 'while true; do date; wget -q -T 2 -O /dev/null http://astro-demo && echo OK || echo FALHA; sleep 1; done'","# Em outro terminal: kubectl logs -f astro-traffic","kubectl apply -f kubernetes/deployment-v2.yaml","kubectl rollout status deployment/astro-demo --timeout=5m","kubectl apply -f kubernetes/broken-deployment.yaml","# Observe ImagePullBackOff e investigue antes de reverter","kubectl get pods -l app=astro-demo","kubectl rollout history deployment/astro-demo","kubectl rollout undo deployment/astro-demo","kubectl rollout status deployment/astro-demo --timeout=5m","# Ao terminar o teste, remova apenas o observador","kubectl delete pod astro-traffic"].join("\n")
     }
   },
   "low-downtime-checklist": {
     points: [
-      "Confirme réplicas, readiness, capacidade de surge e encerramento gracioso.",
-      "Observe disponibilidade durante toda a troca, não apenas o status final.",
-      "Registre evidências do erro provocado e da recuperação."
+      "Base e planejamento: confira identidade da imagem, labels, réplicas, surge, readiness e encerramento.",
+      "Operação e recuperação: guarde status, Events e requisições antes, durante e depois da falha; relacione cada evidência ao que foi aprendido.",
+      "Entrega e decisão: avalie compatibilidade, automação e estratégia; a demonstração NGINX não cobre banco de dados nem todos os requisitos de produção."
     ],
     note: "A demonstração está completa quando o grupo consegue explicar o que aconteceu, provar o baixo downtime e repetir a recuperação."
   }
