@@ -984,8 +984,6 @@ const panelBadge = document.getElementById("panelBadge");
 const panelDesc = document.getElementById("panelDesc");
 const panelLearning = document.getElementById("panelLearning");
 const panelPoints = document.getElementById("panelPoints");
-const presenterNote = document.getElementById("presenterNote");
-const presenterNoteText = document.getElementById("presenterNoteText");
 const panelCodeSection = document.getElementById("panelCodeSection");
 const panelCodeLanguage = document.getElementById("panelCodeLanguage");
 const panelCodeTitle = document.getElementById("panelCodeTitle");
@@ -1616,8 +1614,6 @@ function renderPanelDetails(item){
   });
   panelLearning.hidden = points.length === 0;
 
-  presenterNote.hidden = !details.note;
-  presenterNoteText.textContent = details.note || "";
 
   panelCodeSection.hidden = !details.code;
   panelCodeLanguage.textContent = details.code?.language || "Exemplo";
