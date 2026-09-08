@@ -67,7 +67,7 @@ const DATA = [
     id: "saude",
     title: "Proteja o tráfego",
     track: "Health checks",
-    desc: "Até aqui, dissemos que a nova réplica precisa ficar pronta antes da retirada da antiga. As probes transformam essa condição em verificações concretas. Vamos separar inicialização, prontidão para tráfego e necessidade de reinício, e depois cuidar da saída dos Pods antigos.",
+    desc: "Probe significa sondagem: é um teste automático que o Kubernetes executa para verificar uma condição da aplicação dentro do contêiner. Pense nela como uma checagem recorrente, não apenas uma confirmação de que o processo existe. Configuramos esse teste no YAML; o kubelet, agente que roda em cada nó, o executa e usa o resultado conforme o tipo de probe.",
     links: [
       { label: "Kubernetes — configure probes", url: "https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/" }
     ],
@@ -349,9 +349,10 @@ const PANEL_DETAILS = {
   },
   saude: {
     points: [
-      "Startup pergunta se a aplicação terminou de iniciar.",
-      "Readiness decide se o Pod participa do tráfego.",
-      "Liveness decide se o contêiner precisa ser reiniciado."
+      "A checagem pode fazer uma requisição HTTP, testar uma conexão TCP, executar um comando ou consultar a saúde via gRPC. No nosso NGINX, ela faz uma requisição HTTP à rota /.",
+      "No YAML, definimos o que verificar, o intervalo, o tempo de espera e os limites de falhas. Não basta declarar uma probe: o teste precisa representar a condição que queremos avaliar.",
+      "Startup verifica a inicialização; readiness verifica a prontidão para receber tráfego; liveness identifica quando reiniciar o contêiner. Os próximos cards detalham cada uma.",
+      "No Rolling Update, a readiness ajuda a distinguir uma réplica apenas iniciada de uma pronta para atender. Com os limites do rollout e minReadySeconds, quando configurado, esse sinal orienta a substituição das antigas."
     ],
     note: "As três probes não são versões da mesma verificação: cada uma provoca uma consequência diferente."
   },
